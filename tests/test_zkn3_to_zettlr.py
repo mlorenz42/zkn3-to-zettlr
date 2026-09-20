@@ -262,21 +262,35 @@ class ConverterTest(unittest.TestCase):
         with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
             z.main([])
 
-    def test_old_number_is_only_written_when_asked_for(self):
-        self.convert([zettel("A", "x", created="1301011200"), zettel("B", "y", created="1301011201")])
-        self.assertNotIn("Alte Nummer", self.read(1))
+    def test_number_in_title_is_only_added_when_asked_for(self):
+        self.convert([zettel("Ein Titel", "x", created="1301011200")])
+        self.assertTrue(self.read(1).startswith("# Ein Titel\n"))
 
-    def test_old_number_line_sits_before_the_hashtags(self):
-        make_archive(self.src, [zettel("A", "x", created="1301011200"),
-                                zettel("B", "y", created="1301011201", keywords="1")], keywords=["Bier"])
-        z.main([str(self.src), str(self.out), "--old-number"])
-        self.assertTrue(self.read(2).rstrip().endswith("Alte Nummer: 2\n\n#bier"))
-        self.assertTrue(self.read(1).rstrip().endswith("x\n\nAlte Nummer: 1"))
+    def test_number_in_title_prefixes_the_heading_and_the_link_labels(self):
+        make_archive(self.src, [
+            zettel("Wurzel", "siehe [z 2][/z] und [z 2]mein Text[/z]", created="1301011200", luhmann="2"),
+            zettel("Kind", created="1301011201"),
+            zettel("", "ohne Titel", created="1301011202"),
+        ])
+        z.main([str(self.src), str(self.out), "--number-in-title"])
+        root, child, untitled = self.read(1), self.read(2), self.read(3)
+        self.assertTrue(root.startswith("# 1. Wurzel\n"))
+        self.assertTrue(child.startswith("# 2. Kind\n"))
+        self.assertIn("## Folgezettel\n- [[%s|2. Kind]]" % self.mapping()[2], root)
+        self.assertIn("## Übergeordnet\n- [[%s|1. Wurzel]]" % self.mapping()[1], child)
+        self.assertIn("[[%s|mein Text]]" % self.mapping()[2], root)  # the author's own link text stays
+        self.assertTrue(untitled.startswith("# Zettel 3 (ohne Titel)\n"))  # the number is already in it
 
-    def test_old_number_flag_works_with_the_optional_folder_argument(self):
+    def test_mapping_file_keeps_the_plain_title_even_with_numbers_in_titles(self):
+        make_archive(self.src, [zettel("Ein Titel", "x", created="1301011200")])
+        z.main([str(self.src), str(self.out), "--number-in-title"])
+        with open(self.out / "_zuordnung.csv", encoding="utf-8", newline="") as f:
+            self.assertEqual(list(csv.reader(f))[1], ["1", "20130101120000", "Ein Titel"])
+
+    def test_number_in_title_flag_works_with_the_optional_folder_argument(self):
         make_archive(self.src, [zettel("A", "x", created="1301011200")])
-        z.main([str(self.src), str(self.out), str(self.root), "--old-number"])
-        self.assertIn("Alte Nummer: 1", self.read(1))
+        z.main([str(self.src), str(self.out), str(self.root), "--number-in-title"])
+        self.assertTrue(self.read(1).startswith("# 1. A\n"))
 
 
 if __name__ == "__main__":

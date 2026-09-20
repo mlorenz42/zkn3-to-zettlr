@@ -197,7 +197,7 @@ def count_not_migrated(archive, zettel):
     }
 
 
-def convert(src, out, data_dir=None, old_number=False):
+def convert(src, out, data_dir=None, number_in_title=False):
     UNKNOWN.clear()  # the counter is module-level; start every conversion from zero
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -224,8 +224,13 @@ def convert(src, out, data_dir=None, old_number=False):
     created = {i: parse_dt(zettel[i - 1].get("ts_created")) for i in live}
     zid = dict(zip(live, assign_ids([created[i] for i in live])))
 
-    def title_of(n):
+    def base_title(n):
         return re.sub(r"\s+", " ", zettel[n - 1].findtext("title") or "").strip() or "Zettel %d (ohne Titel)" % n
+
+    def title_of(n):
+        """The title as shown in Zettlr: the first heading, and the label of links to the note."""
+        has_title = bool(re.sub(r"\s+", "", zettel[n - 1].findtext("title") or ""))
+        return "%d. %s" % (n, base_title(n)) if number_in_title and has_title else base_title(n)
 
     def wikilink(n, label=None):
         """[[ID|label]], the way Zettlr writes internal links (link|title format)."""
@@ -278,8 +283,6 @@ def convert(src, out, data_dir=None, old_number=False):
         if el.findtext("misc"):
             # the remarks field can hold the same markup (and images) as the note text
             extra.append("## Bemerkungen\n" + ubb_to_md(el.findtext("misc"), wikilink, authors, images.add).strip())
-        if old_number:
-            extra.append("Alte Nummer: %d" % i)
         if kws:
             extra.append(" ".join("#" + k for k in kws))
 
@@ -295,7 +298,7 @@ def convert(src, out, data_dir=None, old_number=False):
         edited_at = max(parse_dt(el.get("ts_edited")) or created_at, created_at)
         os.utime(path, (created_at.timestamp(), created_at.timestamp()))
         os.utime(path, (edited_at.timestamp(), edited_at.timestamp()))
-        mapping.append((i, zid[i], title))
+        mapping.append((i, zid[i], base_title(i)))  # the plain title, without the number
         written += 1
 
     with open(out / "_zuordnung.csv", "w", encoding="utf-8", newline="") as f:
@@ -330,10 +333,10 @@ def main(argv=None):
     parser.add_argument("output", help="output folder (use a new, empty one)")
     parser.add_argument("zettelkasten_dir", nargs="?",
                         help="folder containing img/ and attachments/ (default: the folder of the .zkn3)")
-    parser.add_argument("--old-number", action="store_true",
-                        help='add the line "Alte Nummer: N" with the old zettel number to every note')
+    parser.add_argument("--number-in-title", action="store_true",
+                        help='put the old zettel number in front of every title: "334. Title"')
     args = parser.parse_args(argv)
-    convert(args.archive, args.output, args.zettelkasten_dir, old_number=args.old_number)
+    convert(args.archive, args.output, args.zettelkasten_dir, number_in_title=args.number_in_title)
 
 
 if __name__ == "__main__":

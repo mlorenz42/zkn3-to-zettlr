@@ -21,7 +21,7 @@ Das Skript ist ein einzelnes Python-Programm ohne Abhängigkeiten. Es läuft lok
 | Bilder und Anhänge | werden nach `img/` und `attachments/` im Ausgabeordner kopiert |
 | Erstelldatum | ID **und** Erstellzeit der Datei |
 | Änderungsdatum | Änderungszeit der Datei. Zettlr speichert Daten nicht in den Notizen, sondern liest sie aus dem Dateisystem. |
-| alte Zettelnummern | Datei `_zuordnung.csv` (alte Nummer, ID, Titel). Mit der Option `--old-number` zusätzlich als Zeile „Alte Nummer: 334" im Zettel. |
+| alte Zettelnummern | Datei `_zuordnung.csv` (alte Nummer, ID, Titel). Mit der Option `--number-in-title` steht die Nummer außerdem im Titel: `# 334. Ein Titel`. |
 
 Ein Beispiel (frei erfunden):
 
@@ -51,10 +51,10 @@ python3 zkn3_to_zettlr.py MeinArchiv.zkn3 ~/Zettelkasten-neu
   python3 zkn3_to_zettlr.py MeinArchiv.zkn3 ~/Zettelkasten-neu ~/Pfad/zum/Zettelkasten-Ordner
   ```
 
-- Mit **`--old-number`** schreibt das Skript in jeden Zettel die Zeile `Alte Nummer: 334` (vor die Hashtags). Damit lassen sich alte Zettelnummern in Zettlr über die Volltextsuche finden, etwa „Alte Nummer: 334". Ohne die Option stehen die Nummern nur in `_zuordnung.csv`.
+- Mit **`--number-in-title`** setzt das Skript die alte Zettelnummer vor jeden Titel: aus „Ein Titel" wird „334. Ein Titel". Das gilt für die Überschrift im Zettel und für die Beschriftung der Links auf ihn (`[[ID|334. Ein Titel]]`). Ein eigener Linktext aus dem Zettelkasten und die Titelspalte in `_zuordnung.csv` bleiben unverändert. Zettel ohne Titel heißen ohnehin „Zettel 334 (ohne Titel)". Ohne die Option stehen die Nummern nur in `_zuordnung.csv`.
 
   ```sh
-  python3 zkn3_to_zettlr.py MeinArchiv.zkn3 ~/Zettelkasten-neu --old-number
+  python3 zkn3_to_zettlr.py MeinArchiv.zkn3 ~/Zettelkasten-neu --number-in-title
   ```
 
 Am Ende druckt das Skript nur Zahlen, keine Inhalte. Dateinamen fehlender Dateien stehen in `_fehlende-bilder.txt` und `_fehlende-anhaenge.txt` im Ausgabeordner.
@@ -97,7 +97,7 @@ Das Skript meldet am Ende, ob diese Dinge im Archiv vorhanden sind. Übernommen 
 - **Einzelne Zeilenumbrüche** werden einfache Umbrüche. In der Zettlr-Vorschau und im Export fließen sie zu einer Zeile zusammen. Zwei Umbrüche ergeben einen Absatz.
 - **Quellen und Fußnoten:** Literaturangaben stehen als Text im Abschnitt „Quellen", Fußnoten im Text werden zu `[Quelle: …, S. 42]`. BibTeX-Schlüssel werden nicht als Pandoc-Zitate (`[@schlüssel]`) umgesetzt. Eine vorhandene `references.bib` wird nur mitkopiert.
 - **Schlagwörter werden umgeschrieben.** Zettlr-Hashtags erlauben nur Buchstaben, Ziffern, `_` und `-`. Das Skript schreibt deshalb alles klein und macht aus Leerzeichen und Sonderzeichen ein `-` („Niklas Luhmann /p" wird `niklas-luhmann-p`). Verschiedene Schlagwörter können dadurch zusammenfallen (etwa „C++" und „C#" zu `c`), und Schlagwörter nur aus Sonderzeichen entfallen.
-- **Zettelnummern** stehen nicht mehr im Dateinamen. Verweise im Fließtext („siehe Zettel 42") werden nicht angepasst. Dafür gibt es `_zuordnung.csv` und die Option `--old-number`. Die Suche nach „Alte Nummer: 33" findet auch 330 bis 339, weil Zettlr nach Teilstrings sucht.
+- **Zettelnummern** stehen nicht mehr im Dateinamen. Verweise im Fließtext („siehe Zettel 42") werden nicht angepasst. Dafür gibt es `_zuordnung.csv` und die Option `--number-in-title`.
 - **Mehrere Elternzettel:** Ist ein Zettel Folgezettel von mehreren Zetteln, steht bei ihm nur einer als „Übergeordnet" (der Elternzettel mit der höchsten Nummer). In der Folgezettel-Liste jedes Elternzettels steht er dagegen.
 - **Verweise auf gelöschte Zettel** entfallen still. Im Text bleibt nur der Linktext stehen.
 - **Die Sekunden in den IDs sind nicht echt.** Das alte Datum hat nur Minutengenauigkeit. Zettel derselben Minute bekommen fortlaufende Sekunden, Zettel ohne Datum die ID direkt nach ihrem Vorgänger. Zweistellige Jahre werden als 1969 bis 2068 gelesen.
@@ -118,7 +118,7 @@ Beobachtet mit Zettlr 4.8.0 (aus dem Quellcode und in der Praxis):
 - **Links folgen** geht mit Cmd + Klick (unter Windows und Linux Strg + Klick). Ist die Option zum automatischen Suchen beim Folgen von Links eingeschaltet (`zkn.autoSearch`), öffnet sich zusätzlich die Suche.
 - **Die Suche nach `#tag`** (und damit die Tag-Wolke) findet nur Hashtags, die als Text im Zettel stehen, nicht Tags, die nur im Frontmatter stehen. Deshalb schreibt das Skript die Schlagwörter als Hashtags an das Ende. Die Suche arbeitet mit Teilstrings: `#bier` findet auch `#bierbrauen`.
 - **Nach Zeit sortieren** nutzt die Zeit, die du in den Einstellungen unter „Time display and sorting" wählst: „Last modification time" (Standard) oder „File creation time". Für die Entstehungsreihenfolge der Zettel, den ältesten zuerst, wähle **„File creation time"**. Mit der Standardeinstellung sortiert Zettlr nach dem letzten Bearbeiten. Die Wahl gilt zugleich für die angezeigte Zeit in der Dateiliste.
-- **Nach Name sortieren** ordnet in der Standardeinstellung („title+heading") nach dem Titel, nicht nach der ID.
+- **Nach Name sortieren** ordnet in der Standardeinstellung („title+heading") nach dem Titel, nicht nach der ID. Mit `--number-in-title` ergibt das die Reihenfolge der alten Zettelnummern, denn die Standardsortierung „natural" vergleicht Zahlen numerisch („2." vor „10."). Bei der Einstellung „ASCII" wäre das nicht so.
 - **Bildendungen** schreibt das Skript klein (`.JPG` wird `.jpg`). Bei großgeschriebenen Endungen zeigte Zettlr 4.8.0 das Bild nicht an.
 - Damit neue Bilder im selben Ordner landen wie die migrierten, stellst du in Zettlr den „Default image folder" auf `img`.
 
