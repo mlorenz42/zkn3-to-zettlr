@@ -8,6 +8,7 @@ A .zkn3 is a ZIP of XML files. Cross references (author, keywords, manlinks,
 luhmann) are 1-based *positions* in the zettel/author/keyword lists, and deleted
 zettel stay in the list as empty slots -- so positions must never be re-numbered.
 """
+import argparse
 import os
 import re
 import sys
@@ -196,7 +197,7 @@ def count_not_migrated(archive, zettel):
     }
 
 
-def convert(src, out, data_dir=None):
+def convert(src, out, data_dir=None, old_number=False):
     UNKNOWN.clear()  # the counter is module-level; start every conversion from zero
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -277,6 +278,8 @@ def convert(src, out, data_dir=None):
         if el.findtext("misc"):
             # the remarks field can hold the same markup (and images) as the note text
             extra.append("## Bemerkungen\n" + ubb_to_md(el.findtext("misc"), wikilink, authors, images.add).strip())
+        if old_number:
+            extra.append("Alte Nummer: %d" % i)
         if kws:
             extra.append(" ".join("#" + k for k in kws))
 
@@ -320,11 +323,17 @@ def convert(src, out, data_dir=None):
 
 
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
-    if len(argv) not in (2, 3):
-        sys.exit("usage: zkn3_to_zettlr.py file.zkn3 output_dir [zettelkasten_dir]\n"
-                 "  zettelkasten_dir: folder containing img/ and attachments/ (default: folder of the .zkn3)")
-    convert(argv[0], argv[1], argv[2] if len(argv) == 3 else None)
+    parser = argparse.ArgumentParser(
+        prog="zkn3_to_zettlr.py",
+        description="Convert a Zettelkasten 3 archive (.zkn3) into Markdown notes in Zettlr's style.")
+    parser.add_argument("archive", help="the .zkn3 file")
+    parser.add_argument("output", help="output folder (use a new, empty one)")
+    parser.add_argument("zettelkasten_dir", nargs="?",
+                        help="folder containing img/ and attachments/ (default: the folder of the .zkn3)")
+    parser.add_argument("--old-number", action="store_true",
+                        help='add the line "Alte Nummer: N" with the old zettel number to every note')
+    args = parser.parse_args(argv)
+    convert(args.archive, args.output, args.zettelkasten_dir, old_number=args.old_number)
 
 
 if __name__ == "__main__":

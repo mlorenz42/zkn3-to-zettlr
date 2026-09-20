@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
@@ -259,8 +259,24 @@ class ConverterTest(unittest.TestCase):
         make_archive(self.src, [zettel("A", "x", created="1301011200")])
         z.main([str(self.src), str(self.out)])
         self.assertEqual(len(self.notes()), 1)
-        with self.assertRaises(SystemExit):
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
             z.main([])
+
+    def test_old_number_is_only_written_when_asked_for(self):
+        self.convert([zettel("A", "x", created="1301011200"), zettel("B", "y", created="1301011201")])
+        self.assertNotIn("Alte Nummer", self.read(1))
+
+    def test_old_number_line_sits_before_the_hashtags(self):
+        make_archive(self.src, [zettel("A", "x", created="1301011200"),
+                                zettel("B", "y", created="1301011201", keywords="1")], keywords=["Bier"])
+        z.main([str(self.src), str(self.out), "--old-number"])
+        self.assertTrue(self.read(2).rstrip().endswith("Alte Nummer: 2\n\n#bier"))
+        self.assertTrue(self.read(1).rstrip().endswith("x\n\nAlte Nummer: 1"))
+
+    def test_old_number_flag_works_with_the_optional_folder_argument(self):
+        make_archive(self.src, [zettel("A", "x", created="1301011200")])
+        z.main([str(self.src), str(self.out), str(self.root), "--old-number"])
+        self.assertIn("Alte Nummer: 1", self.read(1))
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ Das Skript ist ein einzelnes Python-Programm ohne Abhängigkeiten. Es läuft lok
 | Bilder und Anhänge | werden nach `img/` und `attachments/` im Ausgabeordner kopiert |
 | Erstelldatum | ID **und** Erstellzeit der Datei |
 | Änderungsdatum | Änderungszeit der Datei. Zettlr speichert Daten nicht in den Notizen, sondern liest sie aus dem Dateisystem. |
-| alte Zettelnummern | Datei `_zuordnung.csv` (alte Nummer, ID, Titel) |
+| alte Zettelnummern | Datei `_zuordnung.csv` (alte Nummer, ID, Titel). Mit der Option `--old-number` zusätzlich als Zeile „Alte Nummer: 334" im Zettel. |
 
 Ein Beispiel (frei erfunden):
 
@@ -49,6 +49,12 @@ python3 zkn3_to_zettlr.py MeinArchiv.zkn3 ~/Zettelkasten-neu
 
   ```sh
   python3 zkn3_to_zettlr.py MeinArchiv.zkn3 ~/Zettelkasten-neu ~/Pfad/zum/Zettelkasten-Ordner
+  ```
+
+- Mit **`--old-number`** schreibt das Skript in jeden Zettel die Zeile `Alte Nummer: 334` (vor die Hashtags). Damit lassen sich alte Zettelnummern in Zettlr über die Volltextsuche finden, etwa „Alte Nummer: 334". Ohne die Option stehen die Nummern nur in `_zuordnung.csv`.
+
+  ```sh
+  python3 zkn3_to_zettlr.py MeinArchiv.zkn3 ~/Zettelkasten-neu --old-number
   ```
 
 Am Ende druckt das Skript nur Zahlen, keine Inhalte. Dateinamen fehlender Dateien stehen in `_fehlende-bilder.txt` und `_fehlende-anhaenge.txt` im Ausgabeordner.
@@ -91,7 +97,7 @@ Das Skript meldet am Ende, ob diese Dinge im Archiv vorhanden sind. Übernommen 
 - **Einzelne Zeilenumbrüche** werden einfache Umbrüche. In der Zettlr-Vorschau und im Export fließen sie zu einer Zeile zusammen. Zwei Umbrüche ergeben einen Absatz.
 - **Quellen und Fußnoten:** Literaturangaben stehen als Text im Abschnitt „Quellen", Fußnoten im Text werden zu `[Quelle: …, S. 42]`. BibTeX-Schlüssel werden nicht als Pandoc-Zitate (`[@schlüssel]`) umgesetzt. Eine vorhandene `references.bib` wird nur mitkopiert.
 - **Schlagwörter werden umgeschrieben.** Zettlr-Hashtags erlauben nur Buchstaben, Ziffern, `_` und `-`. Das Skript schreibt deshalb alles klein und macht aus Leerzeichen und Sonderzeichen ein `-` („Niklas Luhmann /p" wird `niklas-luhmann-p`). Verschiedene Schlagwörter können dadurch zusammenfallen (etwa „C++" und „C#" zu `c`), und Schlagwörter nur aus Sonderzeichen entfallen.
-- **Zettelnummern** stehen nicht mehr im Dateinamen. Verweise im Fließtext („siehe Zettel 42") werden nicht angepasst. Dafür gibt es `_zuordnung.csv`.
+- **Zettelnummern** stehen nicht mehr im Dateinamen. Verweise im Fließtext („siehe Zettel 42") werden nicht angepasst. Dafür gibt es `_zuordnung.csv` und die Option `--old-number`. Die Suche nach „Alte Nummer: 33" findet auch 330 bis 339, weil Zettlr nach Teilstrings sucht.
 - **Mehrere Elternzettel:** Ist ein Zettel Folgezettel von mehreren Zetteln, steht bei ihm nur einer als „Übergeordnet" (der Elternzettel mit der höchsten Nummer). In der Folgezettel-Liste jedes Elternzettels steht er dagegen.
 - **Verweise auf gelöschte Zettel** entfallen still. Im Text bleibt nur der Linktext stehen.
 - **Die Sekunden in den IDs sind nicht echt.** Das alte Datum hat nur Minutengenauigkeit. Zettel derselben Minute bekommen fortlaufende Sekunden, Zettel ohne Datum die ID direkt nach ihrem Vorgänger. Zweistellige Jahre werden als 1969 bis 2068 gelesen.
