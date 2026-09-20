@@ -3,12 +3,14 @@
 Run from the repository root:  python3 -m unittest discover -s tests -v
 """
 import csv
+import os
 import re
 import sys
 import tempfile
 import unittest
 import zipfile
 from contextlib import redirect_stdout
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 
@@ -82,11 +84,26 @@ class ConverterTest(unittest.TestCase):
         self.convert([zettel("A", created="1301011200"), zettel("B", created="")])
         self.assertEqual(self.mapping(), {1: "20130101120000", 2: "20130101120001"})
 
-    def test_file_date_is_the_creation_date_so_sorting_by_time_matches_the_ids(self):
-        self.convert([zettel("Neu", created="1301011300", edited="2001011200"),
-                      zettel("Alt", created="0501011200", edited="1501011200")])
-        by_mtime = [p.name for p in sorted(self.notes(), key=lambda p: p.stat().st_mtime)]
-        self.assertEqual(by_mtime, [p.name for p in self.notes()])
+    def test_modification_time_is_the_old_edit_date(self):
+        self.convert([zettel("A", created="0504141353", edited="1603211027"),
+                      zettel("B", created="1301011200", edited="")])
+        mtime = lambda n: datetime.fromtimestamp(self.notes()[n].stat().st_mtime)
+        self.assertEqual(mtime(0), datetime(2016, 3, 21, 10, 27))
+        self.assertEqual(mtime(1), datetime(2013, 1, 1, 12, 0))  # never edited: same as created
+
+    @unittest.skipUnless(hasattr(os.stat_result, "st_birthtime"), "creation time can only be set on macOS")
+    def test_creation_time_is_the_old_creation_date(self):
+        self.convert([zettel("A", created="0504141353", edited="1603211027")])
+        st = self.notes()[0].stat()
+        self.assertEqual(datetime.fromtimestamp(st.st_birthtime), datetime(2005, 4, 14, 13, 53))
+        self.assertEqual(datetime.fromtimestamp(st.st_mtime), datetime(2016, 3, 21, 10, 27))
+
+    def test_an_edit_date_before_the_creation_date_is_clamped(self):
+        self.convert([zettel("A", created="1301011200", edited="0101011200")])
+        st = self.notes()[0].stat()
+        self.assertEqual(datetime.fromtimestamp(st.st_mtime), datetime(2013, 1, 1, 12, 0))
+        if hasattr(st, "st_birthtime"):
+            self.assertEqual(datetime.fromtimestamp(st.st_birthtime), datetime(2013, 1, 1, 12, 0))
 
     def test_mapping_file_translates_old_numbers(self):
         self.convert([zettel("Eins", created="1301011200"), zettel("Zwei", created="1301011201")])
@@ -225,7 +242,7 @@ class ConverterTest(unittest.TestCase):
             z.convert(str(self.src), str(self.out))
         line = next(l for l in buffer.getvalue().splitlines() if l.startswith("not migrated"))
         for expected in ("2 desktops (outlines)", "2 bookmarks", "1 saved searches", "1 synonyms",
-                         "1 rated zettel", "1 edit dates"):
+                         "1 rated zettel"):
             self.assertIn(expected, line)
         self.assertNotIn("Geheimer", buffer.getvalue())
 

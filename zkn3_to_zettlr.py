@@ -193,7 +193,6 @@ def count_not_migrated(archive, zettel):
         "saved searches": count("searchrequests.xml", lambda r: len(r.findall("searchrequest"))),
         "synonyms": count("synonyms.xml", lambda r: len(r)),
         "rated zettel": sum(1 for el in zettel if is_rated(el)),
-        "edit dates": sum(1 for el in zettel if el.get("ts_edited")),
     }
 
 
@@ -284,11 +283,15 @@ def convert(src, out, data_dir=None):
         path = out / (zid[i] + ".md")
         path.write_text(
             "# %s\n\n" % title + body + ("\n" + "\n\n".join(extra) + "\n" if extra else ""), encoding="utf-8")
-        # File date = creation date (the ID). Zettlr's "sort by time" uses the modification date by
-        # default, so with the old edit dates here the oldest note would not come first. On macOS
-        # this also moves the file's creation date back, so sorting by creation time works too.
-        stamp = datetime.strptime(zid[i], ID_FORMAT).timestamp()
-        os.utime(path, (stamp, stamp))
+        # Zettlr keeps no dates in the notes, it reads the file's modification and creation time.
+        # So modification time = old edit date, creation time = old creation date (the ID). On macOS
+        # setting a time earlier than the creation time drags the creation time along, hence: set the
+        # creation date first, then the (later) edit date. An edit date before the creation date is
+        # bad data and is clamped to it.
+        created_at = datetime.strptime(zid[i], ID_FORMAT)
+        edited_at = max(parse_dt(el.get("ts_edited")) or created_at, created_at)
+        os.utime(path, (created_at.timestamp(), created_at.timestamp()))
+        os.utime(path, (edited_at.timestamp(), edited_at.timestamp()))
         mapping.append((i, zid[i], title))
         written += 1
 
@@ -302,7 +305,7 @@ def convert(src, out, data_dir=None):
           % (len(zettel), written, len(zettel) - written, len(keywords), len(authors)))
     oldest = min(live, key=lambda n: zid[n]) if live else None
     if oldest is not None and oldest != live[0]:
-        print("note: sorted by time, old zettel number %d comes first, not number %d (their creation dates say so)"
+        print("note: sorted by creation time, old zettel number %d comes first, not number %d"
               % (oldest, live[0]))
     undated = sum(1 for i in live if created[i] is None)
     if undated:

@@ -19,7 +19,8 @@ Das Skript ist ein einzelnes Python-Programm ohne Abhängigkeiten. Es läuft lok
 | Quellen | Abschnitt „Quellen" (als Text) |
 | Anhänge, Bemerkungen | Abschnitte „Anhänge" und „Bemerkungen" |
 | Bilder und Anhänge | werden nach `img/` und `attachments/` im Ausgabeordner kopiert |
-| altes Erstelldatum | ID **und** Dateidatum, damit „Nach Zeit sortieren" in Zettlr die Entstehungsreihenfolge zeigt |
+| Erstelldatum | ID **und** Erstellzeit der Datei |
+| Änderungsdatum | Änderungszeit der Datei. Zettlr speichert Daten nicht in den Notizen, sondern liest sie aus dem Dateisystem. |
 | alte Zettelnummern | Datei `_zuordnung.csv` (alte Nummer, ID, Titel) |
 
 Ein Beispiel (frei erfunden):
@@ -56,7 +57,7 @@ Am Ende druckt das Skript nur Zahlen, keine Inhalte. Dateinamen fehlender Dateie
 833 zettel in file, 833 written, 0 empty slots skipped, 159 keywords, 28 sources
 images: 347 referenced, 347 copied to img/, 0 not found
 attachments: 44 referenced, 44 copied to attachments/, 0 not found
-not migrated (present in the archive): 2 desktops (outlines), 833 edit dates
+not migrated (present in the archive): 2 desktops (outlines), 5 bookmarks
 ```
 
 Lies diese Zeilen. Wenn viele Bilder oder Anhänge „not found" sind, sucht das Skript am falschen Ort. Die Zeile „not migrated" nennt, was das Archiv enthält und was nicht übernommen wurde (siehe unten).
@@ -81,7 +82,6 @@ Das Skript meldet am Ende, ob diese Dinge im Archiv vorhanden sind. Übernommen 
 - **gespeicherte Suchen**
 - **Synonyme**
 - **Bewertungen** der Zettel (Sterne, `rating`)
-- **Änderungsdaten.** Erhalten bleibt nur das Erstelldatum.
 - **Tabellen und Formulare** (`[form]`, `[tc]`) und die zugehörigen Formularbilder (`forms/`). Das Markup bleibt als Text stehen, das Skript meldet „unhandled markup".
 - Programm-Einstellungen (`.zks3`) und alles andere, was nicht im `.zkn3`-Archiv steht.
 
@@ -102,7 +102,8 @@ Das Skript meldet am Ende, ob diese Dinge im Archiv vorhanden sind. Übernommen 
 - **Ein Archiv pro Lauf und pro Ausgabeordner.** Schreibst du mehrere Archive in denselben Ordner, können IDs kollidieren, und Notizen werden überschrieben.
 - **Einmalige Migration, keine Synchronisation.** Ein zweiter Lauf in denselben Ordner überschreibt Notizen mit gleicher ID, also auch deine Änderungen in Zettlr. Löschen tut er nichts. Die Sekunden der Zettel einer Minute hängen von der Reihenfolge im Archiv ab und können sich nach Änderungen dort verschieben.
 - **Bilder und Anhänge müssen auffindbar sein** (siehe oben). Absolute Pfade werden so genommen, wie sie stehen. Pfade eines anderen Rechners werden zusätzlich anhand des Dateinamens in den bekannten Ordnern gesucht. Wird nichts gefunden, steht der Link trotzdem im Zettel, und die Datei erscheint in der Liste der fehlenden. Zwei verschiedene Dateien mit gleichem Namen bekommen ein `-2`.
-- **Das Dateidatum trägt die Sortierung nach Zeit.** Das Skript setzt Änderungs- und (unter macOS auch) Erstellzeit auf das alte Erstelldatum. Unter Linux und Windows ist nur die Änderungszeit gesetzt. Beim Kopieren, Zippen oder Synchronisieren des Ordners kann das Datum verloren gehen, dann ändert sich die Reihenfolge in Zettlr.
+- **Die Daten stecken in den Dateizeiten.** Das Skript setzt die Änderungszeit auf das alte Änderungsdatum und die Erstellzeit auf das alte Erstelldatum. Die Erstellzeit lässt sich nur unter macOS setzen. Unter Linux und Windows bleibt sie die Zeit der Migration, und nur das Änderungsdatum ist erhalten. Beim Kopieren, Zippen oder Synchronisieren des Ordners gehen Dateizeiten leicht verloren, besonders die Erstellzeit. Sichere sie mit einem Werkzeug, das sie erhält (Time Machine, `rsync -a`).
+- **Ein Änderungsdatum vor dem Erstelldatum** gilt als fehlerhaft und wird auf das Erstelldatum gesetzt. Zettel, die nie bearbeitet wurden, bekommen als Änderungsdatum ihr Erstelldatum.
 
 ## Hinweise für Zettlr
 
@@ -110,7 +111,8 @@ Beobachtet mit Zettlr 4.8.0 (aus dem Quellcode und in der Praxis):
 
 - **Links folgen** geht mit Cmd + Klick (unter Windows und Linux Strg + Klick). Ist die Option zum automatischen Suchen beim Folgen von Links eingeschaltet (`zkn.autoSearch`), öffnet sich zusätzlich die Suche.
 - **Die Suche nach `#tag`** (und damit die Tag-Wolke) findet nur Hashtags, die als Text im Zettel stehen, nicht Tags, die nur im Frontmatter stehen. Deshalb schreibt das Skript die Schlagwörter als Hashtags an das Ende. Die Suche arbeitet mit Teilstrings: `#bier` findet auch `#bierbrauen`.
-- **Nach Zeit sortieren** nutzt das Dateidatum. **Nach Name sortieren** ordnet in der Standardeinstellung („title+heading") nach dem Titel, nicht nach der ID.
+- **Nach Zeit sortieren** nutzt die Zeit, die du in den Einstellungen unter „Time display and sorting" wählst: „Last modification time" (Standard) oder „File creation time". Für die Entstehungsreihenfolge der Zettel, den ältesten zuerst, wähle **„File creation time"**. Mit der Standardeinstellung sortiert Zettlr nach dem letzten Bearbeiten. Die Wahl gilt zugleich für die angezeigte Zeit in der Dateiliste.
+- **Nach Name sortieren** ordnet in der Standardeinstellung („title+heading") nach dem Titel, nicht nach der ID.
 - **Bildendungen** schreibt das Skript klein (`.JPG` wird `.jpg`). Bei großgeschriebenen Endungen zeigte Zettlr 4.8.0 das Bild nicht an.
 - Damit neue Bilder im selben Ordner landen wie die migrierten, stellst du in Zettlr den „Default image folder" auf `img`.
 
